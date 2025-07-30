@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:found_and_loading/globals.dart';
-import 'package:found_and_loading/widgets/debug_options_widget.dart';
+
+import 'game_screen.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -30,12 +31,12 @@ class _StartScreenState extends State<StartScreen> {
               _StyledButton(
                 icon: Icons.play_arrow,
                 label: 'Start',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DebugOptionsWidget()),
-                  );
-                },
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GameScreen()),
+                    );
+                  },
               ),
               const SizedBox(height: 32),
 

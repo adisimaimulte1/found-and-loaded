@@ -20,6 +20,9 @@ dependencies:
   vector_math: ^2.1.0
   permission_handler: ^11.3.1
 
+  image_picker: ^1.0.4
+  path_provider: ^2.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -31,7 +34,3 @@ flutter:
 
   assets:
     - assets/images/logo.png
-    - assets/images/ghost/ghost_1.png
-    - assets/images/ghost/ghost_2.png
-    - assets/images/ghost/ghost_3.png
-
