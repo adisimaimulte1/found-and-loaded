@@ -1,0 +1,48 @@
+# Dart/Flutter related
+.dart_tool/
+.dart_tool/package_config.json
+.dart_tool/package_config_subset
+.dart_tool/version
+.dart_tool/extension_discovery/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+pubspec.lock
+
+# IDE related
+.idea/
+.vscode/
+*.iml
+*.iws
+.DS_Store
+
+# Android related
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/key.properties
+android/app/debug.keystore
+android/app/release.keystore
+
+# iOS related
+ios/.symlinks/
+ios/Pods/
+ios/Flutter/Debug.xcconfig
+ios/Flutter/Release.xcconfig
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner.xcworkspace/
+ios/Runner.xcodeproj/
+ios/build/
+
+# Output and temporary files
+repomix-output.txt
+*.log
+.env
+*.tmp
+
