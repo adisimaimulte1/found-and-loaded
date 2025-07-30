@@ -7,6 +7,7 @@ import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:found_and_loading/entities/enemy_spawner.dart';
 import 'package:found_and_loading/globals.dart';
+import 'package:vector_math/vector_math_64.dart' as vector;
 
 class DebugOptionsWidget extends StatefulWidget {
   const DebugOptionsWidget({Key? key}) : super(key: key);
@@ -53,15 +54,35 @@ class _DebugOptionsWidgetState extends State<DebugOptionsWidget> {
               alignment: Alignment.bottomCenter,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 40),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    foregroundColor: backgroundColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _waitForCameraPoseThenSpawn,
-                  child: Text('Spawn Wave ${currentWave + 1} / $totalWaves'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // your existing Spawn Wave button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: backgroundColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _waitForCameraPoseThenSpawn,
+                      child: Text('Spawn Wave ${currentWave + 1} / $totalWaves'),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    // <-- your new button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: backgroundColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: _moveBlock,
+                      child: const Text('My New Button'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -85,6 +106,8 @@ class _DebugOptionsWidgetState extends State<DebugOptionsWidget> {
       showFeaturePoints: true,
       showPlanes: true,
       showWorldOrigin: false,
+      handlePans: true,
+      handleRotation: true,
       handleTaps: true,
     );
 
@@ -103,16 +126,14 @@ class _DebugOptionsWidgetState extends State<DebugOptionsWidget> {
       final camPos = await _arSessionManager.getCameraPose();
       if (camPos != null && mounted) {
 
-        debugPrint("✅ Camera pose received.");
         setState(() => isReady = true);
 
-        enemySpawner!.startEnemyLoop();
+        enemySpawner!.startEnemyLoop(onUpdate: () { setState(() {}); });
         _spawnNextWave(camPos);
         return;
       }
       await Future.delayed(const Duration(milliseconds: 500));
     }
-    debugPrint("❌ Still no camera pose after waiting.");
   }
 
   void _spawnNextWave(Matrix4 camPos) async {
@@ -125,5 +146,16 @@ class _DebugOptionsWidgetState extends State<DebugOptionsWidget> {
     );
 
     setState(() => currentWave++);
+  }
+
+  void _moveBlock() {
+    for (final entry in enemySpawner!.spawnedEnemies.entries) {
+      final id = entry.key;
+      final node = entry.value;
+      final currentPos = enemySpawner!.spawnedEnemiesPos[id];
+      if (currentPos == null) continue;
+
+      node.position = vector.Vector3(node.position.x + 1, node.position.y, node.position.z);
+    }
   }
 }

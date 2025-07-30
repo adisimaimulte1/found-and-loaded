@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
 import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
 class EnemySpawner {
@@ -15,67 +17,46 @@ class EnemySpawner {
 
   Timer? _updateTimer;
 
-  final double minDistance = 12;
+  final double minDistance = 7;
   final double varDistance = 2;
   final Duration spawnDelay = const Duration(milliseconds: 800);
 
   int index = 0;
 
+
+
   EnemySpawner(this.arSessionManager, this.objectManager);
 
-  void startEnemyLoop({Duration interval = const Duration(milliseconds: 50)}) {
+
+
+  void startEnemyLoop(
+      {required VoidCallback onUpdate,
+      Duration interval = const Duration(milliseconds: 32)}) {
     _updateTimer?.cancel();
-    _updateTimer = Timer.periodic(interval, (_) => _updateEnemies());
+    _updateTimer = Timer.periodic(interval, (_) => _updateEnemies(onUpdate));
   }
 
   void stopEnemyLoop() => _updateTimer?.cancel();
 
+  var updateOnce = true;
 
-
-  vector.Vector3 _getCameraPosition(vector.Matrix4? transform) {
-    if (transform == null) return vector.Vector3.zero();
-    return vector.Vector3(
-      transform.getColumn(3).x,
-      transform.getColumn(3).y,
-      transform.getColumn(3).z,
-    );
-  }
-
-  Future<void> _updateEnemies() async {
+  Future<void> _updateEnemies(VoidCallback onUpdate) async {
     final camTransform = await arSessionManager.getCameraPose();
     if (camTransform == null) return;
 
-    final camPos = _getCameraPosition(camTransform);
 
     for (final entry in spawnedEnemies.entries) {
       final id = entry.key;
       final node = entry.value;
-      final currentPos = spawnedEnemiesPos[id];
 
-      if (currentPos == null) continue;
+      final lastRotation = await objectManager.getRotation(node);
+      final lastPosition = await objectManager.getPosition(node);
+      final playerPosition = _getCameraPosition(camTransform);
 
-      // Move slightly toward the player
-      final direction = (camPos - currentPos).normalized();
-      final newPos = currentPos + direction * 0.01;
+      final movementVector = computeMovementVector(playerPosition, lastPosition, 0.5, 0.016);
 
-      // Update the node position
-      await objectManager.removeNode(node);
-
-      final updatedNode = ARNode(
-        name: id,
-        type: node.type,
-        uri: node.uri,
-        scale: node.scale,
-        position: newPos,
-      );
-
-      final added = await objectManager.addNode(updatedNode);
-      if (added == true) {
-        spawnedEnemies[id] = updatedNode;
-        spawnedEnemiesPos[id] = newPos;
-      } else {
-        print("❌ Failed to update node: $id");
-      }
+      objectManager.updateTranslation(node, movementVector.x, 0, movementVector.z);
+      objectManager.updateRotation(node, 0, rotateToPlayer(playerPosition, lastPosition), 0);
     }
   }
 
@@ -97,6 +78,8 @@ class EnemySpawner {
     );
 
     final added = await objectManager.addNode(node);
+    objectManager.updateTranslation(node, position.x, 0, position.y);
+
     if (added == true) {
       spawnedEnemies[id] = node;
       spawnedEnemiesPos[id] = position;
@@ -106,8 +89,6 @@ class EnemySpawner {
     print("❌ Failed to add enemy: $id");
     return null;
   }
-
-
 
   void spawnWave({
     required int count,
@@ -132,6 +113,18 @@ class EnemySpawner {
     spawnedEnemiesPos.clear();
   }
 
+
+
+
+  vector.Vector3 _getCameraPosition(vector.Matrix4? transform) {
+    if (transform == null) return vector.Vector3.zero();
+    return vector.Vector3(
+      transform.getColumn(3).x,
+      transform.getColumn(3).y,
+      transform.getColumn(3).z,
+    );
+  }
+
   vector.Vector3 _generateNonOverlappingPosition(vector.Matrix4? camTransform) {
     if (camTransform == null) return vector.Vector3.zero();
 
@@ -139,22 +132,65 @@ class EnemySpawner {
     final rng = Random();
     const maxTries = 50;
 
-    for (int i = 0; i < maxTries; i++) {
-      final angle = rng.nextDouble() * 2 * pi;
-      final radius = minDistance + rng.nextDouble() * varDistance;
+    // define the outer radius
+    final maxDistance = minDistance + varDistance;
+    // precompute squared radii
+    final min2 = minDistance * minDistance;
+    final max2 = maxDistance * maxDistance;
 
-      final dx = cos(angle) * radius;
-      final dz = sin(angle) * radius;
+    for (int i = 0; i < maxTries; i++) {
+      // pick a random angle
+      final angle = rng.nextDouble() * 2 * pi;
+      // pick a radius r so that points are uniform in the annulus
+      final r = sqrt(rng.nextDouble() * (max2 - min2) + min2);
+
+      final dx = cos(angle) * r;
+      final dz = sin(angle) * r;
       final pos = vector.Vector3(camPos.x + dx, 0, camPos.z + dz);
 
+      // check against other enemies
       final tooClose = spawnedEnemiesPos.values.any((existing) {
         return (existing - pos).length < 2.0;
       });
-
       if (!tooClose) return pos;
     }
 
+    // if we really failed after maxTries, just push it out along +X
     print("⚠️ Fallback spawn position used.");
     return vector.Vector3(camPos.x + minDistance, 0, camPos.z);
   }
+
+  vector.Vector3 computeMovementVector(
+      vector.Vector3 playerPosition,
+      vector.Vector3 enemyPosition,
+      double speed,
+      double dt, {
+        double stopRadius = 0.5,
+      }) {
+    final dir = vector.Vector3(
+      playerPosition.x - enemyPosition.x,
+      0,
+      playerPosition.z - enemyPosition.z,
+    );
+
+    final distance = dir.length;
+    if (distance < stopRadius || distance < 1e-6) return vector.Vector3.zero();
+
+    dir.normalize();
+    return dir * (speed * dt);
+  }
+
+
+  double rotateToPlayer(vector.Vector3 playerPosition, vector.Vector3 enemyPosition) {
+    final dx = playerPosition.x - enemyPosition.x;
+    final dz = playerPosition.z - enemyPosition.z;
+    double angle = -atan2(dz, dx) * 180 / pi;
+
+    if (angle.abs() < 0.01) {
+      angle = 0;
+    }
+
+    return angle;
+  }
+
 }

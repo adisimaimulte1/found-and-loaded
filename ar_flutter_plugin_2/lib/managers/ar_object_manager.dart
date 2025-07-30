@@ -123,6 +123,7 @@ class ARObjectManager {
   Future<bool?> addNode(ARNode node, {ARPlaneAnchor? planeAnchor}) async {
     try {
       node.transformNotifier.addListener(() {
+
         _channel.invokeMethod<void>('transformationChanged', {
           'name': node.name,
           'transformation':
@@ -139,6 +140,59 @@ class ARObjectManager {
     } on PlatformException catch (e) {
       return false;
     }
+  }
+
+  Future<bool?> updateTranslation(ARNode node, double x, double y, double z) async {
+    _channel.invokeMethod("updatePosition", {
+      'name': node.name,
+      'transformation': [ x, y, z ]
+    });
+    node.position = await getPosition(node);
+  }
+
+  Future<bool?> updateRotation(ARNode node, double x, double y, double z) async {
+    _channel.invokeMethod("updateRotation", {
+      'name': node.name,
+      'transformation': [x, y, z]
+    });
+  }
+
+  Future<Vector3> getRotation(ARNode node) async
+  {
+    // Invoke the native method and expect a List of 3 doubles [x, y, z]
+    final List<dynamic>? result = await _channel.invokeMethod<List<dynamic>>(
+      'getRotation',
+      {'name': node.name},
+    );
+
+    if (result == null || result.length != 3) {
+      throw Exception('Failed to get rotation for node ${node.name}');
+    }
+
+    // Cast each entry to double and return as Vector3
+    return Vector3(
+      (result[0] as num).toDouble(),
+      (result[1] as num).toDouble(),
+      (result[2] as num).toDouble(),
+    );
+  }
+
+  Future<Vector3> getPosition(ARNode node) async
+  {
+    final List<dynamic>? result = await _channel.invokeMethod<List<dynamic>>(
+      'getPosition',
+      {'name': node.name},
+    );
+
+    if (result == null || result.length != 3) {
+      throw Exception('Failed to get position for node ${node.name}');
+    }
+
+    return Vector3(
+      (result[0] as num).toDouble(),
+      (result[1] as num).toDouble(),
+      (result[2] as num).toDouble(),
+    );
   }
 
   /// Remove given node from the AR Scene

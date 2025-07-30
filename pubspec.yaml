@@ -31,4 +31,7 @@ flutter:
 
   assets:
     - assets/images/logo.png
+    - assets/images/ghost/ghost_1.png
+    - assets/images/ghost/ghost_2.png
+    - assets/images/ghost/ghost_3.png
 

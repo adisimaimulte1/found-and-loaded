@@ -146,6 +146,18 @@ class ArView(
                 "transformationChanged" -> {
                     handleTransformNode(call, result)
                 }
+                "updatePosition" -> {
+                    handleUpdatePosition(call, result)
+                }
+                "updateRotation" -> {
+                    handleUpdateRotation(call, result)
+                }
+                "getRotation" -> {
+                    handleGetRotation(call, result)
+                }
+                "getPosition" -> {
+                    handleGetPosition(call, result)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -641,10 +653,90 @@ class ArView(
         }
     }
 
+    private fun handleUpdatePosition(
+        call: MethodCall,
+        result: MethodChannel.Result
+    )
+    {
+        try {
+            val name = call.argument<String>("name")
+            val newTransformation: ArrayList<Double> = call.argument<ArrayList<Double>>("transformation")!!
+
+            nodesMap[name]?.let { node ->
+
+                node.apply {
+                    position = Position(position.x + newTransformation[0].toFloat(), position.y + newTransformation[1].toFloat(), position.z + newTransformation[2].toFloat())
+                }
+                    result.success(null)
+            } ?: result.error("NODE_NOT_FOUND", "Node with name $name not found", null)
+        } catch (e: Exception) {
+
+        }
+
+    }
+
+    private fun handleUpdateRotation(
+        call: MethodCall,
+        result: MethodChannel.Result
+    )
+    {
+        try {
+            val name = call.argument<String>("name")
+            val newTransformation: ArrayList<Double> = call.argument<ArrayList<Double>>("transformation")!!
+
+            nodesMap[name]?.let { node ->
+
+                node.apply {
+                    rotation = Position(newTransformation[0].toFloat(), newTransformation[1].toFloat(), newTransformation[2].toFloat())
+                }
+                result.success(null)
+            } ?: result.error("NODE_NOT_FOUND", "Node with name $name not found", null)
+        } catch (e: Exception) {
+
+        }
+
+    }
+
+    private fun handleGetRotation(
+        call: MethodCall,
+        result: MethodChannel.Result
+    )
+    {
+        try {
+            val name = call.argument<String>("name")
+
+            nodesMap[name]?.let { node ->
+                result.success(listOf(node.rotation.x, node.rotation.y, node.rotation.z))
+            } ?: result.error("NODE_NOT_FOUND", "Node with name $name not found", null)
+        } catch (e: Exception) {
+
+        }
+
+    }
+
+    private fun handleGetPosition(
+        call: MethodCall,
+        result: MethodChannel.Result
+    )
+    {
+        try {
+            val name = call.argument<String>("name")
+
+            nodesMap[name]?.let { node ->
+                result.success(listOf(node.position.x, node.position.y, node.position.z))
+            } ?: result.error("NODE_NOT_FOUND", "Node with name $name not found", null)
+        } catch (e: Exception) {
+
+        }
+    }
+
+
+
     private fun handleTransformNode(
-    call: MethodCall,
-    result: MethodChannel.Result,
-) {
+        call: MethodCall,
+        result: MethodChannel.Result,
+    )
+    {
     try {
         if (handlePans || handleRotation) {
             val name = call.argument<String>("name")
@@ -662,25 +754,27 @@ class ArView(
                     }
 
                     node.apply {
-                        transform(
-                            position = ScenePosition(
-                                x = transform[12].toFloat(),
-                                y = transform[13].toFloat(),
-                                z = transform[14].toFloat()
-                            ),
-                            rotation = SceneRotation(
-                                x = kotlin.math.atan2(transform[6].toFloat(), transform[10].toFloat()),
-                                y = kotlin.math.atan2(-transform[2].toFloat(), 
-                                    kotlin.math.sqrt(transform[6].toFloat() * transform[6].toFloat() + 
-                                    transform[10].toFloat() * transform[10].toFloat())),
-                                z = kotlin.math.atan2(transform[1].toFloat(), transform[0].toFloat())
-                            ),
-                            scale = SceneScale(
-                                x = kotlin.math.sqrt((transform[0] * transform[0] + transform[1] * transform[1] + transform[2] * transform[2]).toFloat()),
-                                y = kotlin.math.sqrt((transform[4] * transform[4] + transform[5] * transform[5] + transform[6] * transform[6]).toFloat()),
-                                z = kotlin.math.sqrt((transform[8] * transform[8] + transform[9] * transform[9] + transform[10] * transform[10]).toFloat())
-                            )
-                        )
+                        //position = Position(position.x + 0.001f, position.y, position.z)
+
+  //                        transform(
+//                            position = ScenePosition(
+//                                x = transform[12].toFloat(),
+//                                y = transform[13].toFloat(),
+//                                z = transform[14].toFloat()
+//                            ),
+//                            rotation = SceneRotation(
+//                                x = kotlin.math.atan2(transform[6].toFloat(), transform[10].toFloat()),
+//                                y = kotlin.math.atan2(-transform[2].toFloat(),
+//                                    kotlin.math.sqrt(transform[6].toFloat() * transform[6].toFloat() +
+//                                    transform[10].toFloat() * transform[10].toFloat())),
+//                                z = kotlin.math.atan2(transform[1].toFloat(), transform[0].toFloat())
+//                            ),
+//                            scale = SceneScale(
+//                                x = kotlin.math.sqrt((transform[0] * transform[0] + transform[1] * transform[1] + transform[2] * transform[2]).toFloat()),
+//                                y = kotlin.math.sqrt((transform[4] * transform[4] + transform[5] * transform[5] + transform[6] * transform[6]).toFloat()),
+//                                z = kotlin.math.sqrt((transform[8] * transform[8] + transform[9] * transform[9] + transform[10] * transform[10]).toFloat())
+//                            )
+//                        )
                     }
                     result.success(null)
                 } ?: result.error("INVALID_TRANSFORMATION", "Transformation is required", null)
