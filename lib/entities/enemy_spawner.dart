@@ -5,13 +5,18 @@ import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
 import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 
 class EnemySpawner {
+  int spawnIndex = 0;
+  int total;
+
   final ARSessionManager arSessionManager;
   final ARObjectManager objectManager;
 
+  void Function()? onJumpscare;
   final Map<String, ARNode> spawnedEnemies = {};
   final Map<String, vector.Vector3> spawnedEnemiesPos = {};
 
@@ -25,7 +30,7 @@ class EnemySpawner {
 
 
 
-  EnemySpawner(this.arSessionManager, this.objectManager);
+  EnemySpawner(this.arSessionManager, this.objectManager, this.total);
 
 
 
@@ -53,11 +58,17 @@ class EnemySpawner {
       final lastPosition = await objectManager.getPosition(node);
       final playerPosition = _getCameraPosition(camTransform);
 
-      final movementVector = computeMovementVector(playerPosition, lastPosition, 0.5, 0.016);
+      final movementVector = computeMovementVector(playerPosition, lastPosition, 1, 0.016);
 
       objectManager.updateTranslation(node, movementVector.x, 0, movementVector.z);
       objectManager.updateRotation(node, 0, rotateToPlayer(playerPosition, lastPosition), 0);
+
+      final dist = (playerPosition - lastPosition).length;
+      if (dist <= 0.57) {
+        _triggerJumpscare(id);
+      }
     }
+
   }
 
   Future<String?> spawnEnemy({
@@ -115,6 +126,25 @@ class EnemySpawner {
 
 
 
+  void _triggerJumpscare(String id) async {
+    final node = spawnedEnemies[id];
+    if (node == null) return;
+
+    // Remove the ghost instantly
+    spawnedEnemies.remove(id);
+    spawnedEnemiesPos.remove(id);
+    await objectManager.removeNode(node);
+
+    final player = AudioPlayer();
+    player.play(AssetSource('music/asta_e_suficient_ca_sa_nu_te_scapi_pe_tine.mp3'));
+
+    onJumpscare?.call();
+
+  }
+
+
+
+
 
   vector.Vector3 _getCameraPosition(vector.Matrix4? transform) {
     if (transform == null) return vector.Vector3.zero();
@@ -123,41 +153,6 @@ class EnemySpawner {
       transform.getColumn(3).y,
       transform.getColumn(3).z,
     );
-  }
-
-  vector.Vector3 _generateNonOverlappingPosition(vector.Matrix4? camTransform) {
-    if (camTransform == null) return vector.Vector3.zero();
-
-    final camPos = _getCameraPosition(camTransform);
-    final rng = Random();
-    const maxTries = 50;
-
-    // define the outer radius
-    final maxDistance = minDistance + varDistance;
-    // precompute squared radii
-    final min2 = minDistance * minDistance;
-    final max2 = maxDistance * maxDistance;
-
-    for (int i = 0; i < maxTries; i++) {
-      // pick a random angle
-      final angle = rng.nextDouble() * 2 * pi;
-      // pick a radius r so that points are uniform in the annulus
-      final r = sqrt(rng.nextDouble() * (max2 - min2) + min2);
-
-      final dx = cos(angle) * r;
-      final dz = sin(angle) * r;
-      final pos = vector.Vector3(camPos.x + dx, 0, camPos.z + dz);
-
-      // check against other enemies
-      final tooClose = spawnedEnemiesPos.values.any((existing) {
-        return (existing - pos).length < 2.0;
-      });
-      if (!tooClose) return pos;
-    }
-
-    // if we really failed after maxTries, just push it out along +X
-    print("⚠️ Fallback spawn position used.");
-    return vector.Vector3(camPos.x + minDistance, 0, camPos.z);
   }
 
   vector.Vector3 computeMovementVector(
@@ -185,6 +180,21 @@ class EnemySpawner {
     }
 
     return dir * (speed * dt);
+  }
+
+  vector.Vector3 _generateNonOverlappingPosition(vector.Matrix4? camTransform) {
+    if (camTransform == null) return vector.Vector3.zero();
+
+    final camPos = _getCameraPosition(camTransform);
+    final radius = minDistance + varDistance * 0.5; // fixed radius
+
+    final angle = (2 * pi / total) * spawnIndex;
+    spawnIndex++;
+
+    final dx = cos(angle) * radius;
+    final dz = sin(angle) * radius;
+
+    return vector.Vector3(camPos.x + dx, 0, camPos.z + dz);
   }
 
 

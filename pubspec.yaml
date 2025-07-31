@@ -44,9 +44,11 @@ flutter:
     - assets/images/logo.png
     - assets/images/icon.png
     - assets/music/halloween.mp3
+    - assets/enemies/ghost/ghost_2.png
     - assets/images/player/
     - assets/music/gunshot.mp3 # my favorite music rn
     - assets/images/bullet/
+    - assets/music/asta_e_suficient_ca_sa_nu_te_scapi_pe_tine.mp3
 
 
 flutter_icons:
