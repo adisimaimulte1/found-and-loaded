@@ -11,14 +11,15 @@ class TransparentGame extends FlameGame {
 }
 
 class PlayerGame extends TransparentGame with TapCallbacks {
-  final VoidCallback shootCallback;
+  final void Function(Vector2 gunCorner) shootCallback;
+
   late Player player;
 
   PlayerGame({required this.shootCallback});
 
   @override
   Future<void> onLoad() async {
-    player = Player(shootCallback: shootCallback);
+    player = Player(shootCallback);
     add(player);
   }
 
@@ -29,10 +30,9 @@ class PlayerGame extends TransparentGame with TapCallbacks {
 }
 
 
-class FlameAudio {
-}
-
 class Player extends SpriteComponent with HasGameRef, TapCallbacks {
+  final void Function(Vector2 gunCorner) shootCallback;
+
   double cooldown = 0.5;
   double lastShotTime = 0;
   bool isTilting = false;
@@ -40,7 +40,7 @@ class Player extends SpriteComponent with HasGameRef, TapCallbacks {
   double tiltDuration = 0.2;
   double tiltTimer = 0;
 
-  Player({required VoidCallback shootCallback}) : super(size: Vector2(320, 320)); // make it bigger
+  Player(this.shootCallback) : super(size: Vector2(320, 320));
 
   @override
   Future<void> onLoad() async {
@@ -79,6 +79,9 @@ class Player extends SpriteComponent with HasGameRef, TapCallbacks {
   void _shoot() {
     isTilting = true;
     tiltTimer = tiltDuration;
+
+    final gunCorner = position - size;
+    shootCallback.call(gunCorner);
 
     final player = AudioPlayer();
     player.play(AssetSource('music/gunshot.mp3'));

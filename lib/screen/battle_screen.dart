@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
+import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_anchor_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_location_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/ar_flutter_plugin.dart';
+import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:found_and_loading/entities/bullet.dart';
@@ -135,7 +139,7 @@ class _BattleScreenState extends State<BattleScreen> {
         // Calibration successful ✅
         setState(() {
           isReady = true;
-          playerGame = PlayerGame(shootCallback: spawnBulletFromCamera);
+          playerGame = PlayerGame(shootCallback: spawnBulletFromGun);
         });
 
         enemySpawner!.startEnemyLoop(onUpdate: () { setState(() {}); });
@@ -157,23 +161,74 @@ class _BattleScreenState extends State<BattleScreen> {
     setState(() => currentWave++);
   }
 
-  void spawnBulletFromCamera() async {
+  Future<void> spawnBulletFromGun(Vector2 screenPosition) async {
     final pose = await _arSessionManager.getCameraPose();
     if (pose == null || !mounted) return;
 
-    final direction = getCameraForward(pose);
-    final position = pose.getTranslation();
+    final cameraPos = pose.getTranslation();
+    final forward = getCameraForward(pose);
+    final up = vector.Vector3(0, 1, 0);
+    final left = up.cross(forward).normalized();
 
-    final velocity = Vector2(direction.x, direction.z) * 600; // pixels per second
+    // Convert screen space to normalized offset from center
+    final screenSize = MediaQuery.of(context).size;
+    final screenCenter = screenSize.center(Offset.zero);
 
-    debugPrint('velocity: $velocity');
-    playerGame!.add(
-      Bullet(
-        velocity: Vector2(0, -300), // shoots upward for testing
-      )..position = Vector2(200, 600),
+
+    // Rotate forward vector 15° to the left (Y-axis = vertical)
+    final angleInRadians = vector.radians(-20); // Left of center
+    final rotatedDirection = vector.Quaternion.axisAngle(vector.Vector3(0, 1, 0), angleInRadians)
+        .rotated(forward)
+        .normalized();
+
+    final direction = rotatedDirection;
+    final spawnPosition = cameraPos + direction * 0.5
+      ..y -= 0.2;
+
+    final bulletNode = ARNode(
+      name: 'bullet_${DateTime.now().millisecondsSinceEpoch}',
+      type: NodeType.webGLB,
+      uri: 'https://github.com/adisimaimulte1/found-and-loaded/raw/refs/heads/main/assets/Ghost.glb',
+      position: spawnPosition,
+      scale: vector.Vector3.all(0.12),
     );
 
+    final added = await _arObjectManager.addNode(bulletNode);
+    if (added == true) _animateBulletStraight(bulletNode, direction);
   }
+
+
+
+
+
+
+  void _animateBulletStraight(ARNode node, vector.Vector3 direction) {
+    const speed = 6.0;
+    const maxDistance = 20.0;
+
+    vector.Vector3 currentPosition = node.position;
+
+    final timer = Timer.periodic(const Duration(milliseconds: 16), (timer) async {
+      final movementVector = direction * speed * 0.016;
+      currentPosition += movementVector;
+
+      final updated = await _arObjectManager.updateTranslation(
+        node,
+        movementVector.x,
+        movementVector.y,
+        movementVector.z,
+      );
+
+      if (updated == false || currentPosition.distanceTo(node.position) > maxDistance) {
+        await _arObjectManager.removeNode(node);
+        timer.cancel();
+      }
+    });
+  }
+
+
+
+
 
   vector.Vector3 getCameraForward(vector.Matrix4 pose) {
     final forward = vector.Vector3(0, 0, -1);
