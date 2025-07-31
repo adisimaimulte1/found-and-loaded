@@ -8,7 +8,7 @@
     <uses-feature android:name="android.hardware.camera.ar" android:required="true"/>
 
     <application
-        android:label="found_and_loading"
+        android:label="Found and Loading"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

@@ -17,7 +17,7 @@ class EnemySpawner {
 
   Timer? _updateTimer;
 
-  final double minDistance = 7;
+  final double minDistance = 5;
   final double varDistance = 2;
   final Duration spawnDelay = const Duration(milliseconds: 800);
 
@@ -73,7 +73,7 @@ class EnemySpawner {
       name: id,
       type: NodeType.webGLB,
       uri: uri,
-      scale: scale ?? vector.Vector3.all(0.2),
+      scale: scale ?? vector.Vector3.all(0.35),
       position: position,
     );
 
@@ -165,7 +165,7 @@ class EnemySpawner {
       vector.Vector3 enemyPosition,
       double speed,
       double dt, {
-        double stopRadius = 0.5,
+        double stopRadius = 0.7,
       }) {
     final dir = vector.Vector3(
       playerPosition.x - enemyPosition.x,
@@ -174,11 +174,19 @@ class EnemySpawner {
     );
 
     final distance = dir.length;
-    if (distance < stopRadius || distance < 1e-6) return vector.Vector3.zero();
+    if (distance < 1e-6) return vector.Vector3.zero();
 
     dir.normalize();
+
+    if (distance > stopRadius - 0.1 && distance < stopRadius) {
+      return vector.Vector3.zero();
+    } else if (distance < stopRadius - 0.1) {
+      return -dir * (speed * dt);
+    }
+
     return dir * (speed * dt);
   }
+
 
 
   double rotateToPlayer(vector.Vector3 playerPosition, vector.Vector3 enemyPosition) {

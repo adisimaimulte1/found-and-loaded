@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:found_and_loading/globals.dart';
-
-import 'game_screen.dart';
+import 'package:found_and_loading/widgets/background_music.dart';
+import 'battle_screen.dart';
 
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
@@ -11,7 +11,25 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen> {
-  double _volume = 0.5;
+  double _volume = 0.1;
+
+  @override
+  void initState() {
+    super.initState();
+    _initMusic();
+  }
+
+  Future<void> _initMusic() async {
+    await BackgroundMusic.init(volume: _volume);
+    await BackgroundMusic.play();
+  }
+
+
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,20 +45,17 @@ class _StartScreenState extends State<StartScreen> {
             children: [
               Image.asset('assets/images/logo.png', scale: 1.2),
               const SizedBox(height: 40),
-
               _StyledButton(
                 icon: Icons.play_arrow,
                 label: 'Start',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const GameScreen()),
-                    );
-                  },
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BattleScreen()),
+                  );
+                },
               ),
               const SizedBox(height: 32),
-
-              // 🔊 Volume Label
               const Text(
                 'Volume',
                 style: TextStyle(
@@ -51,8 +66,6 @@ class _StartScreenState extends State<StartScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-
-              // 🎚 Volume Slider
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: accentColor,
@@ -69,6 +82,7 @@ class _StartScreenState extends State<StartScreen> {
                   max: 1,
                   onChanged: (value) {
                     setState(() => _volume = value);
+                    BackgroundMusic.setVolume(value);
                   },
                 ),
               ),
@@ -79,6 +93,8 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 }
+
+
 
 class _StyledButton extends StatelessWidget {
   final IconData icon;
@@ -102,13 +118,13 @@ class _StyledButton extends StatelessWidget {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: backgroundColor, // 🟡 'Start' text matches backgroundColor
+            color: backgroundColor,
           ),
         ),
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: accentColor, // 🟡 Matches slider color
-          foregroundColor: backgroundColor, // applies to icon
+          backgroundColor: accentColor,
+          foregroundColor: backgroundColor,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -119,3 +135,4 @@ class _StyledButton extends StatelessWidget {
     );
   }
 }
+
